@@ -15,7 +15,9 @@ class GamePlay : public Engine::State
 {
 private:
     std::shared_ptr<Context> m_context;
-    std::array<b2Body*, 2> m_walls;
+    std::array<b2Body*, 4> m_walls;
+
+    std::array<b2Body*, 100> m_balls;
     b2Body* m_ball;
 
     sf::Text m_scoreText;
@@ -45,4 +47,6 @@ private:
      * \return A new b2Body.
      */
     b2Body* CreateWall(const sf::Vector2f& size, const sf::Vector2f position);
+
+    b2Body* CreateBall(const float& radius, const sf::Vector2f& position);
 };

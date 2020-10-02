@@ -16,6 +16,7 @@
 GamePlay::GamePlay(std::shared_ptr<Context>& context) :
     m_context(context),
     m_walls(),
+    m_balls(),
     m_ball(nullptr),
     m_score(0),
     m_elapsedTime(sf::Time::Zero),
@@ -38,27 +39,18 @@ void GamePlay::Init()
     auto windowSize = m_context->m_window->getDefaultView().getSize();
     auto tileSize = 32.f;
     m_walls.at(0) = CreateWall({ windowSize.x, tileSize }, { windowSize.x / 2 , tileSize / 2 });
-    m_walls.at(1) = CreateWall({ windowSize.x, tileSize }, { windowSize .x / 2 , (windowSize .y - tileSize / 2) });
+    m_walls.at(1) = CreateWall({ tileSize, windowSize.y }, { tileSize / 2 , (windowSize .y / 2 + tileSize) });
+    m_walls.at(2) = CreateWall({ tileSize, windowSize.y }, { (windowSize.x - (tileSize / 2)) , (windowSize.y / 2 + tileSize) });
+    m_walls.at(3) = CreateWall({ windowSize.x, tileSize }, { windowSize.x / 2  , (windowSize.y - tileSize / 2) });
 
-    // Ball
-    auto ball = new sf::CircleShape(8.f);
-    ball->setOrigin(ball->getRadius(), ball->getRadius());
-    ball->setPosition(1280.f/2, 720.f/2);
+    auto ballRadius = 8.f;
+    m_ball = CreateBall(ballRadius, { windowSize.x / 2, windowSize.y / 2});
 
-    b2BodyDef bodyDefBall;
-    bodyDefBall.position = b2Vec2(1280.f / (2 * m_context->scale), 720.f / (2 * m_context->scale));
-    bodyDefBall.type = b2_dynamicBody;
-    bodyDefBall.userData = ball;
-    m_ball = m_context->m_world->CreateBody(&bodyDefBall);
+    for (int i = 0; i < m_balls.size(); ++i)
+    {
+        m_balls.at(i) = CreateBall(ballRadius, { windowSize.x / 2, (windowSize.y / 2) + (i * ballRadius) });
+    }
 
-    b2PolygonShape ballShape;
-    ballShape.SetAsBox((16.f / 2) / m_context->scale, (16.f / 2) / m_context->scale);
-    b2FixtureDef ballFixture;
-    ballFixture.restitution = 0.5;
-    ballFixture.density = 1.f;
-    ballFixture.friction = 0.7f;
-    ballFixture.shape = &ballShape;
-    m_ball->CreateFixture(&ballFixture);
 
     m_scoreText.setFont(m_context->m_assets->GetFont(MAIN_FONT));
     m_scoreText.setString("Score : " + std::to_string(m_score));
@@ -111,6 +103,14 @@ void GamePlay::Update(sf::Time deltaTime)
         auto ball = reinterpret_cast<sf::CircleShape*>(m_ball->GetUserData());
         ball->setPosition(m_ball->GetPosition().x * m_context->scale, m_ball->GetPosition().y * m_context->scale);
         ball->setRotation(m_ball->GetAngle() * 180 / b2_pi);
+
+        for (auto& ball : m_balls)
+        {
+            auto _ball = reinterpret_cast<sf::CircleShape*>(ball->GetUserData());
+            _ball->setPosition(ball->GetPosition().x * m_context->scale, ball->GetPosition().y * m_context->scale);
+            _ball->setRotation(ball->GetAngle() * 180 / b2_pi);
+        }
+
         m_context->m_world->Step(1.f / 60.f, 8, 3);
     }
 }
@@ -123,6 +123,12 @@ void GamePlay::Draw()
     {
         m_context->m_window->draw(*reinterpret_cast<sf::RectangleShape*>(wall->GetUserData()));
     }
+
+    for (auto& ball : m_balls)
+    {
+        m_context->m_window->draw(*reinterpret_cast<sf::RectangleShape*>(ball->GetUserData()));
+    }
+
     m_context->m_window->draw(*reinterpret_cast<sf::CircleShape*>(m_ball->GetUserData()));
     m_context->m_window->draw(m_scoreText);
     m_context->m_window->display();
@@ -166,5 +172,33 @@ b2Body* GamePlay::CreateWall(const sf::Vector2f& size, const sf::Vector2f positi
     wallBody->CreateFixture(&fixtureDefTop);
 
     return wallBody;
+}
+
+b2Body* GamePlay::CreateBall(const float& radius, const sf::Vector2f& position)
+{
+    auto drawableBall = new sf::CircleShape(radius);
+    drawableBall->setFillColor(sf::Color::Red);
+    drawableBall->setOrigin(drawableBall->getRadius(), drawableBall->getRadius());
+    drawableBall->setPosition(position);
+
+    b2BodyDef bodyDefBall;
+    bodyDefBall.position = b2Vec2(position.x / m_context->scale, position.y / m_context->scale);
+    bodyDefBall.type = b2_dynamicBody;
+    bodyDefBall.userData = drawableBall;
+
+    auto ballShape = b2CircleShape();
+    ballShape.m_radius = radius / m_context->scale;
+    b2FixtureDef ballFixture;
+    ballFixture.density = 1.f;
+    ballFixture.friction = 0.f;
+    ballFixture.restitution = 1.f;
+    ballFixture.shape = &ballShape;
+
+    auto ballBody = m_context->m_world->CreateBody(&bodyDefBall);
+    ballBody->CreateFixture(&ballFixture);
+
+    ballBody->ApplyLinearImpulse({100.0f / m_context->scale, -120.0f / m_context->scale }, bodyDefBall.position, true);
+
+    return ballBody;
 }
 

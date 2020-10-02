@@ -28,7 +28,7 @@ struct Context
         m_states = std::make_unique<Engine::StateMan>();
         m_window = std::make_unique<sf::RenderWindow>();
         // Todo: Make gravity zero.
-        m_world = std::make_unique<b2World>(b2Vec2(0.f, 9.8f));
+        m_world = std::make_unique<b2World>(b2Vec2(0.f, 0.f));
     }
 };
 
