@@ -13,11 +13,14 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include <iostream>
+
 GamePlay::GamePlay(std::shared_ptr<Context>& context) :
     m_context(context),
     m_walls(),
-    m_balls(),
     m_ball(nullptr),
+    m_paddle(nullptr),
+    m_paddleVelocity(0.0),
     m_score(0),
     m_elapsedTime(sf::Time::Zero),
     m_isPaused(false)
@@ -29,9 +32,10 @@ GamePlay::~GamePlay()
 {
     for (auto& wall : m_walls)
     {
-        delete reinterpret_cast<sf::RectangleShape*>(wall->GetUserData());
+        delete reinterpret_cast<sf::Shape*>(wall->GetUserData());
     }
-    delete reinterpret_cast<sf::RectangleShape*>(m_ball->GetUserData());
+    delete reinterpret_cast<sf::Shape*>(m_ball->GetUserData());
+    delete reinterpret_cast<sf::Shape*>(m_paddle->GetUserData());
 }
 
 void GamePlay::Init()
@@ -46,11 +50,7 @@ void GamePlay::Init()
     auto ballRadius = 8.f;
     m_ball = CreateBall(ballRadius, { windowSize.x / 2, windowSize.y / 2});
 
-    for (int i = 0; i < m_balls.size(); ++i)
-    {
-        m_balls.at(i) = CreateBall(ballRadius, { windowSize.x / 2, (windowSize.y / 2) + (i * ballRadius) });
-    }
-
+    m_paddle = CreatePaddle({ (tileSize * 2), (tileSize / 2) }, { (windowSize.x / 2), (windowSize.y - (1.5f * tileSize)) });
 
     m_scoreText.setFont(m_context->m_assets->GetFont(MAIN_FONT));
     m_scoreText.setString("Score : " + std::to_string(m_score));
@@ -74,16 +74,14 @@ void GamePlay::ProcessInput()
             switch (event.key.code)
             {
             case sf::Keyboard::Up:
-                m_ball->ApplyForceToCenter(b2Vec2(0.f, -100.f), true);
                 break;
             case sf::Keyboard::Down:
-                m_ball->ApplyForceToCenter(b2Vec2(0.f, 100.f), true);
                 break;
             case sf::Keyboard::Left:
-                m_ball->ApplyForceToCenter(b2Vec2(-100.f, 0.f), true);
+                m_paddleVelocity = std::clamp<float>(m_paddleVelocity - 500, -1000, 1000);
                 break;
             case sf::Keyboard::Right:
-                m_ball->ApplyForceToCenter(b2Vec2(100.f, 0.f), true);
+                m_paddleVelocity = std::clamp<float>(m_paddleVelocity + 500, -1000, 1000);
                 break;
             case sf::Keyboard::Escape:
                 m_context->m_states->Add(std::make_unique<PauseGame>(m_context));
@@ -100,18 +98,25 @@ void GamePlay::Update(sf::Time deltaTime)
 {
     if(!m_isPaused)
     {
-        auto ball = reinterpret_cast<sf::CircleShape*>(m_ball->GetUserData());
+        m_paddle->SetLinearVelocity({ m_paddleVelocity / m_context->scale, 0.f });
+
+        m_context->m_world->Step(deltaTime.asSeconds(), 8, 3);
+
+        auto ball = reinterpret_cast<sf::Shape*>(m_ball->GetUserData());
         ball->setPosition(m_ball->GetPosition().x * m_context->scale, m_ball->GetPosition().y * m_context->scale);
         ball->setRotation(m_ball->GetAngle() * 180 / b2_pi);
 
-        for (auto& ball : m_balls)
+        auto paddle = reinterpret_cast<sf::Shape*>(m_paddle->GetUserData());
+        paddle->setPosition(m_paddle->GetPosition().x * m_context->scale, m_paddle->GetPosition().y * m_context->scale);
+        
+        if (m_paddleVelocity > 0.0)
         {
-            auto _ball = reinterpret_cast<sf::CircleShape*>(ball->GetUserData());
-            _ball->setPosition(ball->GetPosition().x * m_context->scale, ball->GetPosition().y * m_context->scale);
-            _ball->setRotation(ball->GetAngle() * 180 / b2_pi);
+            m_paddleVelocity = std::clamp<float>(m_paddleVelocity - 500, 0.0, 200);
         }
-
-        m_context->m_world->Step(1.f / 60.f, 8, 3);
+        else
+        {
+            m_paddleVelocity = std::clamp<float>(m_paddleVelocity + 500, -200, 0.0);
+        }
     }
 }
 
@@ -124,12 +129,8 @@ void GamePlay::Draw()
         m_context->m_window->draw(*reinterpret_cast<sf::RectangleShape*>(wall->GetUserData()));
     }
 
-    for (auto& ball : m_balls)
-    {
-        m_context->m_window->draw(*reinterpret_cast<sf::RectangleShape*>(ball->GetUserData()));
-    }
-
-    m_context->m_window->draw(*reinterpret_cast<sf::CircleShape*>(m_ball->GetUserData()));
+    m_context->m_window->draw(*reinterpret_cast<sf::Shape*>(m_ball->GetUserData()));
+    m_context->m_window->draw(*reinterpret_cast<sf::Shape*>(m_paddle->GetUserData()));
     m_context->m_window->draw(m_scoreText);
     m_context->m_window->display();
 }
@@ -161,15 +162,15 @@ b2Body* GamePlay::CreateWall(const sf::Vector2f& size, const sf::Vector2f positi
     bodyDef.userData = drawableWall;
 
     // Define physical shape and properties of current wall.
-    auto shapeTop = b2PolygonShape();
-    shapeTop.SetAsBox((size.x / m_context->scale) / 2, (size.y / m_context->scale) / 2);
-    b2FixtureDef fixtureDefTop;
-    fixtureDefTop.density = 0.f;
-    fixtureDefTop.shape = &shapeTop;
+    auto bodyShape = b2PolygonShape();
+    bodyShape.SetAsBox((size.x / m_context->scale) / 2, (size.y / m_context->scale) / 2);
+    b2FixtureDef fixtureDef;
+    fixtureDef.density = 0.f;
+    fixtureDef.shape = &bodyShape;
 
     // Create wall and attached fixture to it.
     auto wallBody = m_context->m_world->CreateBody(&bodyDef);
-    wallBody->CreateFixture(&fixtureDefTop);
+    wallBody->CreateFixture(&fixtureDef);
 
     return wallBody;
 }
@@ -200,5 +201,37 @@ b2Body* GamePlay::CreateBall(const float& radius, const sf::Vector2f& position)
     ballBody->ApplyLinearImpulse({100.0f / m_context->scale, -120.0f / m_context->scale }, bodyDefBall.position, true);
 
     return ballBody;
+}
+
+b2Body* GamePlay::CreatePaddle(const sf::Vector2f& size, const sf::Vector2f position)
+{
+    // This the drawable object for current wall.
+    // Current state has to make sure to delete this drawable.
+    auto drawableWall = new sf::RectangleShape(size);
+    drawableWall->setOrigin(drawableWall->getSize().x / 2, drawableWall->getSize().y / 2);
+    drawableWall->setPosition(position);
+    drawableWall->setFillColor(sf::Color::Green);
+
+    // This defines the definitions of current wall. 
+    // Drawable created above will be stored as userData in bodyDef.
+    auto bodyDef = b2BodyDef();
+    bodyDef.position = b2Vec2((position.x / m_context->scale), (position.y / m_context->scale));
+    bodyDef.type = b2_kinematicBody;
+    bodyDef.userData = drawableWall;
+
+    // Define physical shape and properties of current wall.
+    auto paddleShape = b2PolygonShape();
+    paddleShape.SetAsBox((size.x / m_context->scale) / 2, (size.y / m_context->scale) / 2);
+    b2FixtureDef fixtureDef;
+    fixtureDef.density = 10.0f;
+    fixtureDef.friction = 0.4f;
+    fixtureDef.restitution = 0.1f;
+    fixtureDef.shape = &paddleShape;
+
+    // Create wall and attached fixture to it.
+    auto wallBody = m_context->m_world->CreateBody(&bodyDef);
+    wallBody->CreateFixture(&fixtureDef);
+
+    return wallBody;
 }
 
