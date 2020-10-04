@@ -10,7 +10,6 @@
 #include <box2d/b2_polygon_shape.h>
 #include <box2d/b2_circle_shape.h>
 #include <box2d/b2_prismatic_joint.h>
-#include <box2d/b2_mouse_joint.h>
 
 #include <stdlib.h>
 #include <time.h>

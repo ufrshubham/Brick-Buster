@@ -7,6 +7,7 @@
 #include <SFML/Graphics/Text.hpp>
 
 #include <box2d/b2_body.h>
+#include <box2d/b2_mouse_joint.h>
 
 #include "Game.hpp"
 #include "State.hpp"
