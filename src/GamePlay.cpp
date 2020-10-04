@@ -9,18 +9,25 @@
 #include <box2d/b2_fixture.h>
 #include <box2d/b2_polygon_shape.h>
 #include <box2d/b2_circle_shape.h>
+#include <box2d/b2_prismatic_joint.h>
+#include <box2d/b2_mouse_joint.h>
 
 #include <stdlib.h>
 #include <time.h>
 
+#include <iostream>
+
 GamePlay::GamePlay(std::shared_ptr<Context>& context) :
     m_context(context),
     m_walls(),
-    m_balls(),
     m_ball(nullptr),
+    m_paddle(nullptr),
+    m_mouseJoint(nullptr),
+    m_targetPosition({0.f, 0.f}),
     m_score(0),
-    m_elapsedTime(sf::Time::Zero),
-    m_isPaused(false)
+    m_isPaused(false),
+    m_tileSize(32.f),
+    m_windowSize(m_context->m_window->getDefaultView().getSize())
 {
     srand(time(nullptr));
 }
@@ -29,28 +36,26 @@ GamePlay::~GamePlay()
 {
     for (auto& wall : m_walls)
     {
-        delete reinterpret_cast<sf::RectangleShape*>(wall->GetUserData());
+        delete reinterpret_cast<sf::Shape*>(wall->GetUserData());
     }
-    delete reinterpret_cast<sf::RectangleShape*>(m_ball->GetUserData());
+    delete reinterpret_cast<sf::Shape*>(m_ball->GetUserData());
+    delete reinterpret_cast<sf::Shape*>(m_paddle->GetUserData());
 }
 
 void GamePlay::Init()
 {
-    auto windowSize = m_context->m_window->getDefaultView().getSize();
-    auto tileSize = 32.f;
-    m_walls.at(0) = CreateWall({ windowSize.x, tileSize }, { windowSize.x / 2 , tileSize / 2 });
-    m_walls.at(1) = CreateWall({ tileSize, windowSize.y }, { tileSize / 2 , (windowSize .y / 2 + tileSize) });
-    m_walls.at(2) = CreateWall({ tileSize, windowSize.y }, { (windowSize.x - (tileSize / 2)) , (windowSize.y / 2 + tileSize) });
-    m_walls.at(3) = CreateWall({ windowSize.x, tileSize }, { windowSize.x / 2  , (windowSize.y - tileSize / 2) });
+    m_walls.at(0) = CreateWall({ m_windowSize.x, m_tileSize }, { m_windowSize.x / 2 , m_tileSize / 2 });
+    m_walls.at(1) = CreateWall({ m_tileSize, m_windowSize.y }, { m_tileSize / 2 , (m_windowSize.y / 2 + m_tileSize) });
+    m_walls.at(2) = CreateWall({ m_tileSize, m_windowSize.y }, { (m_windowSize.x - (m_tileSize / 2)) , (m_windowSize.y / 2 + m_tileSize) });
+    m_walls.at(3) = CreateWall({ m_windowSize.x, m_tileSize }, { m_windowSize.x / 2  , (m_windowSize.y - m_tileSize / 2) });
 
     auto ballRadius = 8.f;
-    m_ball = CreateBall(ballRadius, { windowSize.x / 2, windowSize.y / 2});
+    m_ball = CreateBall(ballRadius, { m_windowSize.x / 2, m_windowSize.y / 2});
 
-    for (int i = 0; i < m_balls.size(); ++i)
-    {
-        m_balls.at(i) = CreateBall(ballRadius, { windowSize.x / 2, (windowSize.y / 2) + (i * ballRadius) });
-    }
+    m_targetPosition = { (m_windowSize.x / 2), (m_windowSize.y - (1.5f * m_tileSize)) };
+    m_paddle = CreatePaddle({ (m_tileSize * 3), (m_tileSize / 2) }, m_targetPosition);
 
+    m_mouseJoint = CreateMouseJoint(*m_paddle, *m_walls.at(0));
 
     m_scoreText.setFont(m_context->m_assets->GetFont(MAIN_FONT));
     m_scoreText.setString("Score : " + std::to_string(m_score));
@@ -62,6 +67,21 @@ void GamePlay::Init()
 
 void GamePlay::ProcessInput()
 {
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left))
+    {
+        if (m_targetPosition.x > 0.f)
+        {
+            m_targetPosition -= sf::Vector2f(20.f, 0.f);
+        }
+    }
+    else if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right))
+    {
+        if (m_targetPosition.x < m_windowSize.x)
+        {
+            m_targetPosition += sf::Vector2f(20.f, 0.f);
+        }
+    }
+
     sf::Event event;
     while (m_context->m_window->pollEvent(event))
     {
@@ -73,18 +93,6 @@ void GamePlay::ProcessInput()
         {
             switch (event.key.code)
             {
-            case sf::Keyboard::Up:
-                m_ball->ApplyForceToCenter(b2Vec2(0.f, -100.f), true);
-                break;
-            case sf::Keyboard::Down:
-                m_ball->ApplyForceToCenter(b2Vec2(0.f, 100.f), true);
-                break;
-            case sf::Keyboard::Left:
-                m_ball->ApplyForceToCenter(b2Vec2(-100.f, 0.f), true);
-                break;
-            case sf::Keyboard::Right:
-                m_ball->ApplyForceToCenter(b2Vec2(100.f, 0.f), true);
-                break;
             case sf::Keyboard::Escape:
                 m_context->m_states->Add(std::make_unique<PauseGame>(m_context));
                 break;
@@ -100,18 +108,25 @@ void GamePlay::Update(sf::Time deltaTime)
 {
     if(!m_isPaused)
     {
-        auto ball = reinterpret_cast<sf::CircleShape*>(m_ball->GetUserData());
+        if (m_ball->GetLinearVelocity().Length() > 30.f)
+        {
+            m_ball->SetLinearDamping(10.f);
+        }
+        else
+        {
+            m_ball->SetLinearDamping(0.f);
+        }
+
+        m_mouseJoint->SetTarget({ m_targetPosition.x / m_context->scale, m_targetPosition.y / m_context->scale });
+
+        m_context->m_world->Step(deltaTime.asSeconds(), 8, 3);
+
+        auto ball = reinterpret_cast<sf::Shape*>(m_ball->GetUserData());
         ball->setPosition(m_ball->GetPosition().x * m_context->scale, m_ball->GetPosition().y * m_context->scale);
         ball->setRotation(m_ball->GetAngle() * 180 / b2_pi);
 
-        for (auto& ball : m_balls)
-        {
-            auto _ball = reinterpret_cast<sf::CircleShape*>(ball->GetUserData());
-            _ball->setPosition(ball->GetPosition().x * m_context->scale, ball->GetPosition().y * m_context->scale);
-            _ball->setRotation(ball->GetAngle() * 180 / b2_pi);
-        }
-
-        m_context->m_world->Step(1.f / 60.f, 8, 3);
+        auto paddle = reinterpret_cast<sf::Shape*>(m_paddle->GetUserData());
+        paddle->setPosition(m_paddle->GetPosition().x * m_context->scale, m_paddle->GetPosition().y * m_context->scale);
     }
 }
 
@@ -124,12 +139,8 @@ void GamePlay::Draw()
         m_context->m_window->draw(*reinterpret_cast<sf::RectangleShape*>(wall->GetUserData()));
     }
 
-    for (auto& ball : m_balls)
-    {
-        m_context->m_window->draw(*reinterpret_cast<sf::RectangleShape*>(ball->GetUserData()));
-    }
-
-    m_context->m_window->draw(*reinterpret_cast<sf::CircleShape*>(m_ball->GetUserData()));
+    m_context->m_window->draw(*reinterpret_cast<sf::Shape*>(m_ball->GetUserData()));
+    m_context->m_window->draw(*reinterpret_cast<sf::Shape*>(m_paddle->GetUserData()));
     m_context->m_window->draw(m_scoreText);
     m_context->m_window->display();
 }
@@ -161,15 +172,15 @@ b2Body* GamePlay::CreateWall(const sf::Vector2f& size, const sf::Vector2f positi
     bodyDef.userData = drawableWall;
 
     // Define physical shape and properties of current wall.
-    auto shapeTop = b2PolygonShape();
-    shapeTop.SetAsBox((size.x / m_context->scale) / 2, (size.y / m_context->scale) / 2);
-    b2FixtureDef fixtureDefTop;
-    fixtureDefTop.density = 0.f;
-    fixtureDefTop.shape = &shapeTop;
+    auto bodyShape = b2PolygonShape();
+    bodyShape.SetAsBox((size.x / m_context->scale) / 2, (size.y / m_context->scale) / 2);
+    b2FixtureDef fixtureDef;
+    fixtureDef.density = 0.f;
+    fixtureDef.shape = &bodyShape;
 
     // Create wall and attached fixture to it.
     auto wallBody = m_context->m_world->CreateBody(&bodyDef);
-    wallBody->CreateFixture(&fixtureDefTop);
+    wallBody->CreateFixture(&fixtureDef);
 
     return wallBody;
 }
@@ -200,5 +211,56 @@ b2Body* GamePlay::CreateBall(const float& radius, const sf::Vector2f& position)
     ballBody->ApplyLinearImpulse({100.0f / m_context->scale, -120.0f / m_context->scale }, bodyDefBall.position, true);
 
     return ballBody;
+}
+
+b2Body* GamePlay::CreatePaddle(const sf::Vector2f& size, const sf::Vector2f position)
+{
+    // This the drawable object for this paddle.
+    // Current state has to make sure to delete this drawable.
+    auto drawablePaddle = new sf::RectangleShape(size);
+    drawablePaddle->setOrigin(drawablePaddle->getSize().x / 2, drawablePaddle->getSize().y / 2);
+    drawablePaddle->setPosition(position);
+    drawablePaddle->setFillColor(sf::Color::Blue);
+
+    // This defines the definitions of paddle. 
+    // Drawable created above will be stored as userData in bodyDef.
+    auto bodyDef = b2BodyDef();
+    bodyDef.position = b2Vec2((position.x / m_context->scale), (position.y / m_context->scale));
+    bodyDef.type = b2_dynamicBody;
+    bodyDef.userData = drawablePaddle;
+
+    // Define physical shape and properties of paddle.
+    auto paddleShape = b2PolygonShape();
+    paddleShape.SetAsBox((size.x / m_context->scale) / 2, (size.y / m_context->scale) / 2);
+    b2FixtureDef fixtureDef;
+    fixtureDef.density = 1.f;
+    fixtureDef.restitution = 0.1f;
+    fixtureDef.shape = &paddleShape;
+
+    // Create paddle and attached fixture to it.
+    auto paddleBody = m_context->m_world->CreateBody(&bodyDef);
+    paddleBody->CreateFixture(&fixtureDef);
+    paddleBody->SetLinearDamping(1);
+
+    // Create a prismatic joint to restrict motion of paddle along y-axis.
+    b2Vec2 worldAxis(1.0f, 0.0f);
+    b2PrismaticJointDef jointDef;
+    jointDef.collideConnected = true;
+    jointDef.Initialize(m_walls.at(0), paddleBody, m_walls.at(0)->GetWorldCenter(), worldAxis);
+    auto joint = m_context->m_world->CreateJoint(&jointDef);
+
+    return paddleBody;
+}
+
+b2MouseJoint* GamePlay::CreateMouseJoint(b2Body& bodyToMove, b2Body& groundBody)
+{
+    auto mouseJointDef = b2MouseJointDef();
+    mouseJointDef.bodyA = &groundBody;
+    mouseJointDef.bodyB = &bodyToMove;
+    mouseJointDef.target = bodyToMove.GetPosition();
+    mouseJointDef.collideConnected = true;
+    mouseJointDef.maxForce = 500.f;
+    auto moustJoint = static_cast<b2MouseJoint*>(m_context->m_world->CreateJoint(&mouseJointDef));
+    return moustJoint;
 }
 
