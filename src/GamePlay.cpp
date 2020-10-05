@@ -70,14 +70,14 @@ void GamePlay::ProcessInput()
     {
         if (m_targetPosition.x > 0.f)
         {
-            m_targetPosition -= sf::Vector2f(20.f, 0.f);
+            m_targetPosition -= sf::Vector2f(15.f, 0.f);
         }
     }
     else if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right))
     {
         if (m_targetPosition.x < m_windowSize.x)
         {
-            m_targetPosition += sf::Vector2f(20.f, 0.f);
+            m_targetPosition += sf::Vector2f(15.f, 0.f);
         }
     }
 
@@ -199,7 +199,7 @@ b2Body* GamePlay::CreateBall(const float& radius, const sf::Vector2f& position)
     auto ballShape = b2CircleShape();
     ballShape.m_radius = radius / m_context->scale;
     b2FixtureDef ballFixture;
-    ballFixture.density = 1.f;
+    ballFixture.density = .1f;
     ballFixture.friction = 0.f;
     ballFixture.restitution = 1.f;
     ballFixture.shape = &ballShape;
@@ -232,7 +232,7 @@ b2Body* GamePlay::CreatePaddle(const sf::Vector2f& size, const sf::Vector2f posi
     auto paddleShape = b2PolygonShape();
     paddleShape.SetAsBox((size.x / m_context->scale) / 2, (size.y / m_context->scale) / 2);
     b2FixtureDef fixtureDef;
-    fixtureDef.density = 1.f;
+    fixtureDef.density = 0.2f;
     fixtureDef.restitution = 0.1f;
     fixtureDef.shape = &paddleShape;
 
@@ -258,7 +258,9 @@ b2MouseJoint* GamePlay::CreateMouseJoint(b2Body& bodyToMove, b2Body& groundBody)
     mouseJointDef.bodyB = &bodyToMove;
     mouseJointDef.target = bodyToMove.GetPosition();
     mouseJointDef.collideConnected = true;
-    mouseJointDef.maxForce = 500.f;
+    mouseJointDef.dampingRatio = 1.f;
+    mouseJointDef.frequencyHz = 2000.f;
+    mouseJointDef.maxForce = 1000.f;
     auto moustJoint = static_cast<b2MouseJoint*>(m_context->m_world->CreateJoint(&mouseJointDef));
     return moustJoint;
 }
