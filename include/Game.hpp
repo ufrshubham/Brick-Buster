@@ -3,11 +3,13 @@
 #include <memory>
 
 #include <SFML/Graphics/RenderWindow.hpp>
+
 #include <box2d/b2_world.h>
 #include <box2d/b2_math.h>
 
 #include "AssetMan.hpp"
 #include "StateMan.hpp"
+#include "ContactListener.hpp"
 
 enum AssetID
 {
@@ -21,6 +23,7 @@ struct Context
     std::unique_ptr<Engine::StateMan> m_states;
     std::unique_ptr<sf::RenderWindow> m_window;
     std::unique_ptr<b2World> m_world;
+    std::unique_ptr<ContactListener> m_contactListener;
 
     Context()
     {

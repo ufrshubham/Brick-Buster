@@ -11,12 +11,14 @@
 
 #include "Game.hpp"
 #include "State.hpp"
+#include "ContactListener.hpp"
 
 class GamePlay : public Engine::State
 {
 private:
     std::shared_ptr<Context> m_context;
     std::array<b2Body*, 4> m_walls;
+    std::vector<b2Body*> m_bricks;
 
     b2Body* m_ball;
     b2Body* m_paddle;
@@ -31,6 +33,8 @@ private:
     
     const float m_tileSize;
     const sf::Vector2f m_windowSize;
+
+    std::unique_ptr<ContactListener> m_contactListener;
 
 public:
     GamePlay(std::shared_ptr<Context> &context);

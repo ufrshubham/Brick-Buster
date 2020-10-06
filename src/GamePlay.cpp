@@ -19,6 +19,7 @@
 GamePlay::GamePlay(std::shared_ptr<Context>& context) :
     m_context(context),
     m_walls(),
+    m_bricks(21),
     m_ball(nullptr),
     m_paddle(nullptr),
     m_mouseJoint(nullptr),
@@ -26,9 +27,11 @@ GamePlay::GamePlay(std::shared_ptr<Context>& context) :
     m_score(0),
     m_isPaused(false),
     m_tileSize(32.f),
-    m_windowSize(m_context->m_window->getDefaultView().getSize())
+    m_windowSize(m_context->m_window->getDefaultView().getSize()),
+    m_contactListener(std::make_unique<ContactListener>())
 {
     srand(time(nullptr));
+    m_context->m_world->SetContactListener(m_contactListener.get());
 }
 
 GamePlay::~GamePlay()
@@ -48,11 +51,26 @@ void GamePlay::Init()
     m_walls.at(2) = CreateWall({ m_tileSize, m_windowSize.y }, { (m_windowSize.x - (m_tileSize / 2)) , (m_windowSize.y / 2 + m_tileSize) });
     m_walls.at(3) = CreateWall({ m_windowSize.x, m_tileSize }, { m_windowSize.x / 2  , (m_windowSize.y - m_tileSize / 2) });
 
-    auto ballRadius = 8.f;
-    m_ball = CreateBall(ballRadius, { m_windowSize.x / 2, m_windowSize.y / 2});
+    auto position = sf::Vector2f(64.f * 2, 64.f * 2);
+    for(int i = 0; i < 3; ++i)
+    {
+        for(int j = 0; j < 7; ++j)
+        {
+            m_bricks[i * 7 + j] = CreateWall({ (m_tileSize * 2), (m_tileSize / 2) }, position);
+            position.x += 64.f + 16.f;
+        }
+        position.x = 64.f * 2;
+        position.y += 32.f;
+    }
 
+    auto ballRadius = 8.f;
     m_targetPosition = { (m_windowSize.x / 2), (m_windowSize.y - (1.5f * m_tileSize)) };
+
+    m_ball = CreateBall(ballRadius, {m_targetPosition.x, m_targetPosition.y - 16.f});
     m_paddle = CreatePaddle({ (m_tileSize * 3), (m_tileSize / 2) }, m_targetPosition);
+
+    m_contactListener->SetBall(m_ball);
+    m_contactListener->SetPaddle(m_paddle);
 
     m_mouseJoint = CreateMouseJoint(*m_paddle, *m_walls.at(0));
 
@@ -61,7 +79,7 @@ void GamePlay::Init()
     m_scoreText.setFillColor(sf::Color(255, 128, 0));
     m_scoreText.setOutlineColor(sf::Color::Black);
     m_scoreText.setOutlineThickness(0.f);
-    m_scoreText.setCharacterSize(15.f);
+    m_scoreText.setCharacterSize(15);
 }
 
 void GamePlay::ProcessInput()
@@ -107,7 +125,7 @@ void GamePlay::Update(sf::Time deltaTime)
 {
     if(!m_isPaused)
     {
-        if (m_ball->GetLinearVelocity().Length() > 30.f)
+        if (m_ball->GetLinearVelocity().Length() > 10.f)
         {
             m_ball->SetLinearDamping(10.f);
         }
@@ -126,6 +144,8 @@ void GamePlay::Update(sf::Time deltaTime)
 
         auto paddle = reinterpret_cast<sf::Shape*>(m_paddle->GetUserData());
         paddle->setPosition(m_paddle->GetPosition().x * m_context->scale, m_paddle->GetPosition().y * m_context->scale);
+
+        m_contactListener->DeleteCollidedBodies(m_context->m_world.get(), m_bricks);
     }
 }
 
@@ -135,7 +155,15 @@ void GamePlay::Draw()
 
     for (auto &wall : m_walls)
     {
-        m_context->m_window->draw(*reinterpret_cast<sf::RectangleShape*>(wall->GetUserData()));
+        m_context->m_window->draw(*reinterpret_cast<sf::Shape*>(wall->GetUserData()));
+    }
+
+    for(auto &brick : m_bricks)
+    {
+        if(brick)
+        {
+            m_context->m_window->draw(*reinterpret_cast<sf::Shape*>(brick->GetUserData()));
+        }
     }
 
     m_context->m_window->draw(*reinterpret_cast<sf::Shape*>(m_ball->GetUserData()));
@@ -199,7 +227,7 @@ b2Body* GamePlay::CreateBall(const float& radius, const sf::Vector2f& position)
     auto ballShape = b2CircleShape();
     ballShape.m_radius = radius / m_context->scale;
     b2FixtureDef ballFixture;
-    ballFixture.density = .1f;
+    ballFixture.density = 1.f;
     ballFixture.friction = 0.f;
     ballFixture.restitution = 1.f;
     ballFixture.shape = &ballShape;
@@ -207,7 +235,7 @@ b2Body* GamePlay::CreateBall(const float& radius, const sf::Vector2f& position)
     auto ballBody = m_context->m_world->CreateBody(&bodyDefBall);
     ballBody->CreateFixture(&ballFixture);
 
-    ballBody->ApplyLinearImpulse({100.0f / m_context->scale, -120.0f / m_context->scale }, bodyDefBall.position, true);
+    ballBody->ApplyLinearImpulse({-100.0f / m_context->scale, -100.0f / m_context->scale }, bodyDefBall.position, true);
 
     return ballBody;
 }
@@ -234,6 +262,7 @@ b2Body* GamePlay::CreatePaddle(const sf::Vector2f& size, const sf::Vector2f posi
     b2FixtureDef fixtureDef;
     fixtureDef.density = 0.2f;
     fixtureDef.restitution = 0.1f;
+    fixtureDef.friction = 0.f;
     fixtureDef.shape = &paddleShape;
 
     // Create paddle and attached fixture to it.
