@@ -40,7 +40,8 @@ if(UNIX AND NOT APPLE)
 endif()
 
 if(LINUX)
-    target_link_libraries(Brick-Buster box2d sfml-window sfml-graphics sfml-system)
+    find_library(LIBBOX2D Box2D DIRECTORY)
+    target_link_libraries(Brick-Buster ${LIBBOX2D} sfml-window sfml-graphics sfml-system)
 elseif(WIN32)
     target_link_libraries(Brick-Buster opengl32 freetype flac ogg openal32 vorbis vorbisenc vorbisfile winmm gdi32 
                             debug sfml-window-s-d debug sfml-graphics-s-d debug sfml-system-s-d debug box2d-d

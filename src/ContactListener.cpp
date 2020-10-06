@@ -48,7 +48,7 @@ void ContactListener::DeleteCollidedBodies(b2World* world, std::vector<b2Body*>&
 {
     for(auto& body : m_bodiesToBeDeleted)
     {
-        auto& it = std::find(bricks.begin(), bricks.end(), body);
+        const auto& it = std::find(bricks.begin(), bricks.end(), body);
         if(it!=bricks.end())
         {
             bricks.erase(it);
