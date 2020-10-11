@@ -1,7 +1,9 @@
+#include "Game.hpp"
 #include "GameOver.hpp"
 #include "GamePlay.hpp"
 
 #include <SFML/Window/Event.hpp>
+#include <SFML/Graphics/View.hpp>
 
 GameOver::GameOver(std::shared_ptr<Context> &context)
     : m_context(context), m_isRetryButtonSelected(true),
@@ -21,16 +23,16 @@ void GameOver::Init()
     m_gameOverTitle.setString("Game Over");
     m_gameOverTitle.setOrigin(m_gameOverTitle.getLocalBounds().width / 2,
                               m_gameOverTitle.getLocalBounds().height / 2);
-    m_gameOverTitle.setPosition(m_context->m_window->getSize().x / 2,
-                                m_context->m_window->getSize().y / 2 - 150.f);
+    m_gameOverTitle.setPosition(m_context->m_window->getView().getSize().x / 2,
+                                m_context->m_window->getView().getSize().y / 2 - 150.f);
 
     // Play Button
     m_retryButton.setFont(m_context->m_assets->GetFont(MAIN_FONT));
     m_retryButton.setString("Retry");
     m_retryButton.setOrigin(m_retryButton.getLocalBounds().width / 2,
                             m_retryButton.getLocalBounds().height / 2);
-    m_retryButton.setPosition(m_context->m_window->getSize().x / 2,
-                              m_context->m_window->getSize().y / 2 - 25.f);
+    m_retryButton.setPosition(m_context->m_window->getView().getSize().x / 2,
+                              m_context->m_window->getView().getSize().y / 2 - 25.f);
     m_retryButton.setCharacterSize(20);
 
     // Exit Button
@@ -38,8 +40,8 @@ void GameOver::Init()
     m_exitButton.setString("Exit");
     m_exitButton.setOrigin(m_exitButton.getLocalBounds().width / 2,
                            m_exitButton.getLocalBounds().height / 2);
-    m_exitButton.setPosition(m_context->m_window->getSize().x / 2,
-                             m_context->m_window->getSize().y / 2 + 25.f);
+    m_exitButton.setPosition(m_context->m_window->getView().getSize().x / 2,
+                             m_context->m_window->getView().getSize().y / 2 + 25.f);
     m_exitButton.setCharacterSize(20);
 }
 

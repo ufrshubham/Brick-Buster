@@ -9,19 +9,18 @@
 #include <box2d/b2_body.h>
 #include <box2d/b2_mouse_joint.h>
 
-#include "Game.hpp"
 #include "State.hpp"
-#include "ContactListener.hpp"
+
+struct Context;
+class Body;
+class ContactListener;
+enum class BodyType;
 
 class GamePlay : public Engine::State
 {
 private:
+    std::shared_ptr<std::multimap<BodyType, std::unique_ptr<Body>>> m_entityMap;
     std::shared_ptr<Context> m_context;
-    std::array<b2Body*, 4> m_walls;
-    std::vector<b2Body*> m_bricks;
-
-    b2Body* m_ball;
-    b2Body* m_paddle;
 
     b2MouseJoint* m_mouseJoint;
     sf::Vector2f m_targetPosition;
@@ -48,35 +47,6 @@ public:
     void Start() override;
 
 private:
-    /**
-     * \brief This method creates a new static b2Body. It internally attaches a drawable object
-     * as userData in body definition. Use b2Body::GetUserData() to get this drawable.
-     * 
-     * \param size Size of the wall in pixel space.
-     * \param position Position of the wall in pixel space.
-     * \return A new rectangular b2Body.
-     */
-    b2Body* CreateWall(const sf::Vector2f& size, const sf::Vector2f position);
-
-    /**
-     * \brief This method creates a new dynamic b2Body. It internally attaches a drawable object
-     * as userData in body definition. Use b2Body::GetUserData() to get this drawable.
-     * 
-     * \param radius Radius of circle in pixel space.
-     * \param position Position of the ball in pixel space.
-     * \return A new circular b2Body.
-     */
-    b2Body* CreateBall(const float& radius, const sf::Vector2f& position);
-
-    /**
-     * \brief This method creates a new dynamic b2Body. It internally attaches a drawable object
-     * as userData in body definition. Use b2Body::GetUserData() to get this drawable.
-     * 
-     * \param size Size of the paddle in pixel space.
-     * \param position Position of the paddle in pixel space.
-     * \return A new rectangular b2Body.
-     */
-    b2Body* CreatePaddle(const sf::Vector2f& size, const sf::Vector2f position);
 
     /**
      * \brief This method creates a new b2MouseJoint between given two bodies.

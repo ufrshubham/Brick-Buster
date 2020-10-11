@@ -9,6 +9,7 @@
 
 #include "AssetMan.hpp"
 #include "StateMan.hpp"
+
 #include "ContactListener.hpp"
 
 enum AssetID
@@ -30,7 +31,6 @@ struct Context
         m_assets = std::make_unique<Engine::AssetMan>();
         m_states = std::make_unique<Engine::StateMan>();
         m_window = std::make_unique<sf::RenderWindow>();
-        // Todo: Make gravity zero.
         m_world = std::make_unique<b2World>(b2Vec2(0.f, 0.f));
     }
 };

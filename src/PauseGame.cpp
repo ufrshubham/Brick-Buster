@@ -1,4 +1,5 @@
 #include "PauseGame.hpp"
+#include "Game.hpp"
 
 #include <SFML/Window/Event.hpp>
 
@@ -18,8 +19,8 @@ void PauseGame::Init()
     m_pauseTitle.setString("Paused");
     m_pauseTitle.setOrigin(m_pauseTitle.getLocalBounds().width / 2,
                            m_pauseTitle.getLocalBounds().height / 2);
-    m_pauseTitle.setPosition(m_context->m_window->getSize().x / 2,
-                             m_context->m_window->getSize().y / 2);
+    m_pauseTitle.setPosition(m_context->m_window->getDefaultView().getSize().x / 2,
+                             m_context->m_window->getDefaultView().getSize().y / 2);
 }
 
 void PauseGame::ProcessInput()

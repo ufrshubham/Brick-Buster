@@ -5,7 +5,8 @@
 #include <SFML/Graphics/Text.hpp>
 
 #include "State.hpp"
-#include "Game.hpp"
+
+struct Context;
 
 class PauseGame : public Engine::State
 {

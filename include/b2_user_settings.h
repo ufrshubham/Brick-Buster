@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SFML/Graphics/Shape.hpp>
+#include "Body.hpp"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -15,7 +15,7 @@
 /// this too much because b2BlockAllocator has a maximum object size.
 #define b2_maxPolygonVertices	8
 
-using b2BodyUserData = sf::Shape*;
+using b2BodyUserData = Body*;
 
 /// You can define this to inject whatever data you want in b2Fixture
 struct b2FixtureUserData

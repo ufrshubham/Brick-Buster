@@ -1,6 +1,12 @@
+#include "Game.hpp"
 #include "GamePlay.hpp"
 #include "GameOver.hpp"
 #include "PauseGame.hpp"
+#include "Ball.hpp"
+#include "Wall.hpp"
+#include "Paddle.hpp"
+#include "Brick.hpp"
+#include "ContactListener.hpp"
 
 #include <SFML/Window/Event.hpp>
 #include <SFML/Graphics/RectangleShape.hpp>
@@ -13,50 +19,40 @@
 
 #include <stdlib.h>
 #include <time.h>
-
 #include <iostream>
 
 GamePlay::GamePlay(std::shared_ptr<Context>& context) :
+    m_entityMap(std::make_shared<std::multimap<BodyType, std::unique_ptr<Body>>>()),
     m_context(context),
-    m_walls(),
-    m_bricks(21),
-    m_ball(nullptr),
-    m_paddle(nullptr),
     m_mouseJoint(nullptr),
     m_targetPosition({0.f, 0.f}),
     m_score(0),
     m_isPaused(false),
     m_tileSize(32.f),
     m_windowSize(m_context->m_window->getDefaultView().getSize()),
-    m_contactListener(std::make_unique<ContactListener>())
+    m_contactListener(std::make_unique<ContactListener>(m_entityMap))
 {
-    srand(time(nullptr));
+    srand((unsigned int)time(nullptr));
     m_context->m_world->SetContactListener(m_contactListener.get());
 }
 
 GamePlay::~GamePlay()
 {
-    for (auto& wall : m_walls)
-    {
-        delete reinterpret_cast<sf::Shape*>(wall->GetUserData());
-    }
-    delete reinterpret_cast<sf::Shape*>(m_ball->GetUserData());
-    delete reinterpret_cast<sf::Shape*>(m_paddle->GetUserData());
 }
 
 void GamePlay::Init()
 {
-    m_walls.at(0) = CreateWall({ m_windowSize.x, m_tileSize }, { m_windowSize.x / 2 , m_tileSize / 2 });
-    m_walls.at(1) = CreateWall({ m_tileSize, m_windowSize.y }, { m_tileSize / 2 , (m_windowSize.y / 2 + m_tileSize) });
-    m_walls.at(2) = CreateWall({ m_tileSize, m_windowSize.y }, { (m_windowSize.x - (m_tileSize / 2)) , (m_windowSize.y / 2 + m_tileSize) });
-    m_walls.at(3) = CreateWall({ m_windowSize.x, m_tileSize }, { m_windowSize.x / 2  , (m_windowSize.y - m_tileSize / 2) });
+    m_entityMap->emplace(std::make_pair(BodyType::Wall, std::make_unique<Wall>(m_context, sf::Vector2f{ m_windowSize.x, m_tileSize }, sf::Vector2f{ m_windowSize.x / 2 , m_tileSize / 2 })));
+    m_entityMap->emplace(std::make_pair(BodyType::Wall, std::make_unique<Wall>(m_context, sf::Vector2f{ m_tileSize, m_windowSize.y }, sf::Vector2f{ m_tileSize / 2 , (m_windowSize.y / 2 + m_tileSize) })));
+    m_entityMap->emplace(std::make_pair(BodyType::Wall, std::make_unique<Wall>(m_context, sf::Vector2f{ m_tileSize, m_windowSize.y }, sf::Vector2f{ (m_windowSize.x - (m_tileSize / 2)) , (m_windowSize.y / 2 + m_tileSize) })));
+    m_entityMap->emplace(std::make_pair(BodyType::Wall, std::make_unique<Wall>(m_context, sf::Vector2f{ m_windowSize.x, m_tileSize }, sf::Vector2f{ m_windowSize.x / 2  , (m_windowSize.y - m_tileSize / 2) })));
 
     auto position = sf::Vector2f(64.f * 2, 64.f * 2);
     for(int i = 0; i < 3; ++i)
     {
         for(int j = 0; j < 7; ++j)
         {
-            m_bricks[i * 7 + j] = CreateWall({ (m_tileSize * 2), (m_tileSize / 2) }, position);
+            m_entityMap->emplace(std::make_pair(BodyType::Brick, std::make_unique<Brick>(m_context, sf::Vector2f{ (m_tileSize * 2), (m_tileSize / 2) }, position)));
             position.x += 64.f + 16.f;
         }
         position.x = 64.f * 2;
@@ -65,14 +61,22 @@ void GamePlay::Init()
 
     auto ballRadius = 8.f;
     m_targetPosition = { (m_windowSize.x / 2), (m_windowSize.y - (1.5f * m_tileSize)) };
+    m_entityMap->emplace(std::make_pair(BodyType::Ball, std::make_unique<Ball>(m_context, ballRadius, sf::Vector2f{ m_targetPosition.x, m_targetPosition.y - 16.f })));
+    m_entityMap->emplace(std::make_pair(BodyType::Paddle, std::make_unique<Paddle>(m_context, sf::Vector2f{ (m_tileSize * 3), (m_tileSize / 2) }, sf::Vector2f{ m_targetPosition })));
 
-    m_ball = CreateBall(ballRadius, {m_targetPosition.x, m_targetPosition.y - 16.f});
-    m_paddle = CreatePaddle({ (m_tileSize * 3), (m_tileSize / 2) }, m_targetPosition);
+    auto paddleIt = m_entityMap->find(BodyType::Paddle);
+    auto wallIt = m_entityMap->find(BodyType::Wall);
+    if ((paddleIt != m_entityMap->end()) && (wallIt != m_entityMap->end()))
+    {
+        m_mouseJoint = CreateMouseJoint(*paddleIt->second->GetB2Body(), *wallIt->second->GetB2Body());
 
-    m_contactListener->SetBall(m_ball);
-    m_contactListener->SetPaddle(m_paddle);
-
-    m_mouseJoint = CreateMouseJoint(*m_paddle, *m_walls.at(0));
+        // Create a prismatic joint to restrict motion of paddle along y-axis.
+        b2Vec2 worldAxis(1.0f, 0.0f);
+        b2PrismaticJointDef jointDef;
+        jointDef.collideConnected = true;
+        jointDef.Initialize(wallIt->second->GetB2Body(), paddleIt->second->GetB2Body(), wallIt->second->GetB2Body()->GetWorldCenter(), worldAxis);
+        auto joint = m_context->m_world->CreateJoint(&jointDef);
+    }
 
     m_scoreText.setFont(m_context->m_assets->GetFont(MAIN_FONT));
     m_scoreText.setString("Score : " + std::to_string(m_score));
@@ -125,27 +129,25 @@ void GamePlay::Update(sf::Time deltaTime)
 {
     if(!m_isPaused)
     {
-        if (m_ball->GetLinearVelocity().Length() > 10.f)
-        {
-            m_ball->SetLinearDamping(10.f);
-        }
-        else
-        {
-            m_ball->SetLinearDamping(0.f);
-        }
+        //if (m_ball->GetLinearVelocity().Length() > 10.f)
+        //{
+        //    m_ball->SetLinearDamping(10.f);
+        //}
+        //else
+        //{
+        //    m_ball->SetLinearDamping(0.f);
+        //}
 
         m_mouseJoint->SetTarget({ m_targetPosition.x / m_context->scale, m_targetPosition.y / m_context->scale });
 
         m_context->m_world->Step(deltaTime.asSeconds(), 8, 3);
 
-        auto ball = reinterpret_cast<sf::Shape*>(m_ball->GetUserData());
-        ball->setPosition(m_ball->GetPosition().x * m_context->scale, m_ball->GetPosition().y * m_context->scale);
-        ball->setRotation(m_ball->GetAngle() * 180 / b2_pi);
+        for (auto& entity : *m_entityMap)
+        {
+            entity.second->Update(deltaTime);
+        }
 
-        auto paddle = reinterpret_cast<sf::Shape*>(m_paddle->GetUserData());
-        paddle->setPosition(m_paddle->GetPosition().x * m_context->scale, m_paddle->GetPosition().y * m_context->scale);
-
-        m_contactListener->DeleteCollidedBodies(m_context->m_world.get(), m_bricks);
+        m_contactListener->DeleteCollidedBodies(m_context->m_world.get());
     }
 }
 
@@ -153,21 +155,11 @@ void GamePlay::Draw()
 {
     m_context->m_window->clear();
 
-    for (auto &wall : m_walls)
+    for (auto& entity : *m_entityMap)
     {
-        m_context->m_window->draw(*reinterpret_cast<sf::Shape*>(wall->GetUserData()));
+        m_context->m_window->draw(*entity.second);
     }
 
-    for(auto &brick : m_bricks)
-    {
-        if(brick)
-        {
-            m_context->m_window->draw(*reinterpret_cast<sf::Shape*>(brick->GetUserData()));
-        }
-    }
-
-    m_context->m_window->draw(*reinterpret_cast<sf::Shape*>(m_ball->GetUserData()));
-    m_context->m_window->draw(*reinterpret_cast<sf::Shape*>(m_paddle->GetUserData()));
     m_context->m_window->draw(m_scoreText);
     m_context->m_window->display();
 }
@@ -180,104 +172,6 @@ void GamePlay::Pause()
 void GamePlay::Start()
 {
     m_isPaused = false;
-}
-
-b2Body* GamePlay::CreateWall(const sf::Vector2f& size, const sf::Vector2f position)
-{
-    // This the drawable object for current wall.
-    // Current state has to make sure to delete this drawable.
-    auto drawableWall = new sf::RectangleShape(size);
-    drawableWall->setOrigin(drawableWall->getSize().x / 2, drawableWall->getSize().y / 2);
-    drawableWall->setPosition(position);
-    drawableWall->setFillColor(sf::Color::Green);
-
-    // This defines the definitions of current wall. 
-    // Drawable created above will be stored as userData in bodyDef.
-    auto bodyDef = b2BodyDef();
-    bodyDef.position = b2Vec2((position.x / m_context->scale), (position.y / m_context->scale));
-    bodyDef.type = b2_staticBody;
-    bodyDef.userData = drawableWall;
-
-    // Define physical shape and properties of current wall.
-    auto bodyShape = b2PolygonShape();
-    bodyShape.SetAsBox((size.x / m_context->scale) / 2, (size.y / m_context->scale) / 2);
-    b2FixtureDef fixtureDef;
-    fixtureDef.density = 0.f;
-    fixtureDef.shape = &bodyShape;
-
-    // Create wall and attached fixture to it.
-    auto wallBody = m_context->m_world->CreateBody(&bodyDef);
-    wallBody->CreateFixture(&fixtureDef);
-
-    return wallBody;
-}
-
-b2Body* GamePlay::CreateBall(const float& radius, const sf::Vector2f& position)
-{
-    auto drawableBall = new sf::CircleShape(radius);
-    drawableBall->setFillColor(sf::Color::Red);
-    drawableBall->setOrigin(drawableBall->getRadius(), drawableBall->getRadius());
-    drawableBall->setPosition(position);
-
-    b2BodyDef bodyDefBall;
-    bodyDefBall.position = b2Vec2(position.x / m_context->scale, position.y / m_context->scale);
-    bodyDefBall.type = b2_dynamicBody;
-    bodyDefBall.userData = drawableBall;
-
-    auto ballShape = b2CircleShape();
-    ballShape.m_radius = radius / m_context->scale;
-    b2FixtureDef ballFixture;
-    ballFixture.density = 1.f;
-    ballFixture.friction = 0.f;
-    ballFixture.restitution = 1.f;
-    ballFixture.shape = &ballShape;
-
-    auto ballBody = m_context->m_world->CreateBody(&bodyDefBall);
-    ballBody->CreateFixture(&ballFixture);
-
-    ballBody->ApplyLinearImpulse({-100.0f / m_context->scale, -100.0f / m_context->scale }, bodyDefBall.position, true);
-
-    return ballBody;
-}
-
-b2Body* GamePlay::CreatePaddle(const sf::Vector2f& size, const sf::Vector2f position)
-{
-    // This the drawable object for this paddle.
-    // Current state has to make sure to delete this drawable.
-    auto drawablePaddle = new sf::RectangleShape(size);
-    drawablePaddle->setOrigin(drawablePaddle->getSize().x / 2, drawablePaddle->getSize().y / 2);
-    drawablePaddle->setPosition(position);
-    drawablePaddle->setFillColor(sf::Color::Blue);
-
-    // This defines the definitions of paddle. 
-    // Drawable created above will be stored as userData in bodyDef.
-    auto bodyDef = b2BodyDef();
-    bodyDef.position = b2Vec2((position.x / m_context->scale), (position.y / m_context->scale));
-    bodyDef.type = b2_dynamicBody;
-    bodyDef.userData = drawablePaddle;
-
-    // Define physical shape and properties of paddle.
-    auto paddleShape = b2PolygonShape();
-    paddleShape.SetAsBox((size.x / m_context->scale) / 2, (size.y / m_context->scale) / 2);
-    b2FixtureDef fixtureDef;
-    fixtureDef.density = 0.2f;
-    fixtureDef.restitution = 0.1f;
-    fixtureDef.friction = 0.f;
-    fixtureDef.shape = &paddleShape;
-
-    // Create paddle and attached fixture to it.
-    auto paddleBody = m_context->m_world->CreateBody(&bodyDef);
-    paddleBody->CreateFixture(&fixtureDef);
-    paddleBody->SetLinearDamping(1);
-
-    // Create a prismatic joint to restrict motion of paddle along y-axis.
-    b2Vec2 worldAxis(1.0f, 0.0f);
-    b2PrismaticJointDef jointDef;
-    jointDef.collideConnected = true;
-    jointDef.Initialize(m_walls.at(0), paddleBody, m_walls.at(0)->GetWorldCenter(), worldAxis);
-    auto joint = m_context->m_world->CreateJoint(&jointDef);
-
-    return paddleBody;
 }
 
 b2MouseJoint* GamePlay::CreateMouseJoint(b2Body& bodyToMove, b2Body& groundBody)

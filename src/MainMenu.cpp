@@ -1,3 +1,4 @@
+#include "Game.hpp"
 #include "MainMenu.hpp"
 #include "GamePlay.hpp"
 
@@ -27,8 +28,8 @@ void MainMenu::Init()
     m_gameTitle.setCharacterSize(45);
     m_gameTitle.setOrigin(m_gameTitle.getLocalBounds().width / 2,
                           m_gameTitle.getLocalBounds().height / 2);
-    m_gameTitle.setPosition(m_context->m_window->getSize().x / 2,
-                            m_context->m_window->getSize().y / 2 - 150.f);
+    m_gameTitle.setPosition(m_context->m_window->getDefaultView().getSize().x / 2,
+                            m_context->m_window->getDefaultView().getSize().y / 2 - 150.f);
 
     // Play Button
     m_playButton.setFont(m_context->m_assets->GetFont(MAIN_FONT));
@@ -37,8 +38,8 @@ void MainMenu::Init()
     m_playButton.setOutlineThickness(2.f);
     m_playButton.setOrigin(m_playButton.getLocalBounds().width / 2,
                            m_playButton.getLocalBounds().height / 2);
-    m_playButton.setPosition(m_context->m_window->getSize().x / 2,
-                             m_context->m_window->getSize().y / 2 - 25.f);
+    m_playButton.setPosition(m_context->m_window->getDefaultView().getSize().x / 2,
+                             m_context->m_window->getDefaultView().getSize().y / 2 - 25.f);
     m_playButton.setCharacterSize(20);
 
     // Exit Button
@@ -48,8 +49,8 @@ void MainMenu::Init()
     m_exitButton.setOutlineThickness(0.f);
     m_exitButton.setOrigin(m_exitButton.getLocalBounds().width / 2,
                            m_exitButton.getLocalBounds().height / 2);
-    m_exitButton.setPosition(m_context->m_window->getSize().x / 2,
-                             m_context->m_window->getSize().y / 2 + 25.f);
+    m_exitButton.setPosition(m_context->m_window->getDefaultView().getSize().x / 2,
+                             m_context->m_window->getDefaultView().getSize().y / 2 + 25.f);
     m_exitButton.setCharacterSize(20);
 }
 

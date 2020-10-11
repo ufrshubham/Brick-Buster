@@ -7,7 +7,12 @@ set(BRICK_BUSTER_SOURCE_FILES
     MainMenu.cpp
     PauseGame.cpp
     StateMan.cpp
-    ContactListener.cpp)
+    ContactListener.cpp
+    Body.cpp
+    Ball.cpp
+    Paddle.cpp
+    Wall.cpp
+    Brick.cpp)
 
 set(BRICK_BUSTER_HEADER_FILES
     ../include/AssetMan.hpp
@@ -19,7 +24,12 @@ set(BRICK_BUSTER_HEADER_FILES
     ../include/State.hpp
     ../include/StateMan.hpp
     ../include/b2_user_settings.h
-    ../include/ContactListener.hpp)
+    ../include/ContactListener.hpp
+    ../include/Body.hpp
+    ../include/Ball.hpp
+    ../include/Paddle.hpp
+    ../include/Wall.hpp
+    ../include/Brick.hpp)
 
 add_executable(Brick-Buster ${BRICK_BUSTER_SOURCE_FILES} ${BRICK_BUSTER_HEADER_FILES})
 

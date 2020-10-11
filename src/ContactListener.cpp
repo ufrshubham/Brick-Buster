@@ -5,9 +5,8 @@
 #include <box2d/b2_contact.h>
 #include <box2d/b2_world.h>
 
-ContactListener::ContactListener() : 
-    m_ball(nullptr),
-    m_paddle(nullptr),
+ContactListener::ContactListener(std::shared_ptr<std::multimap<BodyType, std::unique_ptr<Body>>>& entityMap) :
+    m_entityMap(entityMap),
     m_bodiesToBeDeleted()
 {
 }
@@ -16,43 +15,47 @@ ContactListener::~ContactListener()
 {
 }
 
-void ContactListener::SetBall(const b2Body* ball)
-{
-    m_ball = ball;
-}
-
-void ContactListener::SetPaddle(const b2Body* paddle)
-{
-    m_paddle = paddle;
-}
-
 void ContactListener::EndContact(b2Contact* contact)
 {
-    auto bodyA = contact->GetFixtureA()->GetBody();
-    auto bodyB = contact->GetFixtureB()->GetBody();
+    auto b2BodyA = contact->GetFixtureA()->GetBody();
+    auto b2BodyB = contact->GetFixtureB()->GetBody();
 
-    if((bodyA != m_paddle) && (bodyB != m_paddle))
+    auto bodyA = reinterpret_cast<Body*>(b2BodyA->GetUserData());
+    auto bodyB = reinterpret_cast<Body*>(b2BodyB->GetUserData());
+
+    if (bodyA && bodyB)
     {
-        if(bodyA == m_ball)
+        auto bodyAType = bodyA->GetType();
+        auto bodyBType = bodyB->GetType();
+
+        if ((bodyAType != BodyType::Wall) && (bodyBType != BodyType::Wall))
         {
-            m_bodiesToBeDeleted.push_back(bodyB);
-        }
-        else if(bodyB == m_ball)
-        {
-            m_bodiesToBeDeleted.push_back(bodyA);
+            if ((bodyAType == BodyType::Ball) || (bodyBType == BodyType::Brick))
+            {
+                m_bodiesToBeDeleted.push_back(b2BodyB);
+            }
+            else if ((bodyBType == BodyType::Ball) || (bodyAType == BodyType::Brick))
+            {
+                m_bodiesToBeDeleted.push_back(b2BodyA);
+            }
         }
     }
 }
 
-void ContactListener::DeleteCollidedBodies(b2World* world, std::vector<b2Body*>& bricks)
+void ContactListener::DeleteCollidedBodies(b2World* world)
 {
     for(auto& body : m_bodiesToBeDeleted)
     {
-        const auto& it = std::find(bricks.begin(), bricks.end(), body);
-        if(it!=bricks.end())
+        auto range = m_entityMap->equal_range(BodyType::Brick);
+
+        for (auto it = range.first; it != range.second; ++it)
         {
-            bricks.erase(it);
-            world->DestroyBody(body);
+            if (it->second->GetB2Body() == body)
+            {
+                m_entityMap->erase(it);
+                world->DestroyBody(body);
+                break;
+            }
         }
     }
     m_bodiesToBeDeleted.clear();
