@@ -4,6 +4,7 @@ set(BRICK_BUSTER_SOURCE_FILES
     GameOver.cpp
     Level.cpp
     Level1.cpp
+    Level2.cpp
     main.cpp
     MainMenu.cpp
     PauseGame.cpp
@@ -21,6 +22,7 @@ set(BRICK_BUSTER_HEADER_FILES
     ../include/GameOver.hpp
     ../include/Level.hpp
     ../include/Level1.hpp
+    ../include/Level2.hpp
     ../include/MainMenu.hpp
     ../include/PauseGame.hpp
     ../include/State.hpp

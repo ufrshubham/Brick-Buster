@@ -152,6 +152,12 @@ void Level::Update(sf::Time deltaTime)
         if(m_entityMap->find(BodyType::Brick) == m_entityMap->end())
         {
             this->LoadNextLevel();
+
+            // Now destory all the entities.
+            for(auto& entity : *m_entityMap)
+            {
+                m_context->m_world->DestroyBody(entity.second.get()->GetB2Body());
+            }
         }
     }
 }
