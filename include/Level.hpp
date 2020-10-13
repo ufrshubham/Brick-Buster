@@ -16,11 +16,13 @@ class Body;
 class ContactListener;
 enum class BodyType;
 
-class GamePlay : public Engine::State
+class Level : public Engine::State
 {
+protected:
+    std::shared_ptr<Context> m_context;
+
 private:
     std::shared_ptr<std::multimap<BodyType, std::unique_ptr<Body>>> m_entityMap;
-    std::shared_ptr<Context> m_context;
 
     b2MouseJoint* m_mouseJoint;
     sf::Vector2f m_targetPosition;
@@ -36,8 +38,8 @@ private:
     std::unique_ptr<ContactListener> m_contactListener;
 
 public:
-    GamePlay(std::shared_ptr<Context> &context);
-    ~GamePlay();
+    Level(const std::shared_ptr<Context> &context);
+    virtual ~Level();
 
     void Init() override;
     void ProcessInput() override;
@@ -45,6 +47,8 @@ public:
     void Draw() override;
     void Pause() override;
     void Start() override;
+
+    virtual void LoadNextLevel() const = 0;
 
 private:
 

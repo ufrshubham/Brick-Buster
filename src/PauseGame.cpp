@@ -3,7 +3,7 @@
 
 #include <SFML/Window/Event.hpp>
 
-PauseGame::PauseGame(std::shared_ptr<Context> &context)
+PauseGame::PauseGame(const std::shared_ptr<Context> &context)
     : m_context(context)
 {
 }

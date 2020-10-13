@@ -1,5 +1,5 @@
 #include "Game.hpp"
-#include "GamePlay.hpp"
+#include "Level.hpp"
 #include "GameOver.hpp"
 #include "PauseGame.hpp"
 #include "Ball.hpp"
@@ -21,7 +21,7 @@
 #include <time.h>
 #include <iostream>
 
-GamePlay::GamePlay(std::shared_ptr<Context>& context) :
+Level::Level(const std::shared_ptr<Context>& context) :
     m_entityMap(std::make_shared<std::multimap<BodyType, std::unique_ptr<Body>>>()),
     m_context(context),
     m_mouseJoint(nullptr),
@@ -36,11 +36,11 @@ GamePlay::GamePlay(std::shared_ptr<Context>& context) :
     m_context->m_world->SetContactListener(m_contactListener.get());
 }
 
-GamePlay::~GamePlay()
+Level::~Level()
 {
 }
 
-void GamePlay::Init()
+void Level::Init()
 {
     m_entityMap->emplace(std::make_pair(BodyType::Wall, std::make_unique<Wall>(m_context, sf::Vector2f{ m_windowSize.x, m_tileSize }, sf::Vector2f{ m_windowSize.x / 2 , m_tileSize / 2 })));
     m_entityMap->emplace(std::make_pair(BodyType::Wall, std::make_unique<Wall>(m_context, sf::Vector2f{ m_tileSize, m_windowSize.y }, sf::Vector2f{ m_tileSize / 2 , (m_windowSize.y / 2 + m_tileSize) })));
@@ -86,7 +86,7 @@ void GamePlay::Init()
     m_scoreText.setCharacterSize(15);
 }
 
-void GamePlay::ProcessInput()
+void Level::ProcessInput()
 {
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left))
     {
@@ -125,7 +125,7 @@ void GamePlay::ProcessInput()
     }
 }
 
-void GamePlay::Update(sf::Time deltaTime)
+void Level::Update(sf::Time deltaTime)
 {
     if(!m_isPaused)
     {
@@ -148,10 +148,15 @@ void GamePlay::Update(sf::Time deltaTime)
         }
 
         m_contactListener->DeleteCollidedBodies(m_context->m_world.get());
+
+        if(m_entityMap->find(BodyType::Brick) == m_entityMap->end())
+        {
+            this->LoadNextLevel();
+        }
     }
 }
 
-void GamePlay::Draw()
+void Level::Draw()
 {
     m_context->m_window->clear();
 
@@ -164,17 +169,17 @@ void GamePlay::Draw()
     m_context->m_window->display();
 }
 
-void GamePlay::Pause()
+void Level::Pause()
 {
     m_isPaused = true;
 }
 
-void GamePlay::Start()
+void Level::Start()
 {
     m_isPaused = false;
 }
 
-b2MouseJoint* GamePlay::CreateMouseJoint(b2Body& bodyToMove, b2Body& groundBody)
+b2MouseJoint* Level::CreateMouseJoint(b2Body& bodyToMove, b2Body& groundBody)
 {
     auto mouseJointDef = b2MouseJointDef();
     mouseJointDef.bodyA = &groundBody;

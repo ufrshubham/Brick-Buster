@@ -15,7 +15,7 @@ private:
     sf::Text m_pauseTitle;
 
 public:
-    PauseGame(std::shared_ptr<Context> &context);
+    PauseGame(const std::shared_ptr<Context> &context);
     ~PauseGame();
 
     void Init() override;

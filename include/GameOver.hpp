@@ -23,7 +23,7 @@ private:
     bool m_isExitButtonPressed;
 
 public:
-    GameOver(std::shared_ptr<Context> &context);
+    GameOver(const std::shared_ptr<Context> &context);
     ~GameOver();
 
     void Init() override;

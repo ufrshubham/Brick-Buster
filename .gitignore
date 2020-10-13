@@ -406,3 +406,6 @@ FodyWeavers.xsd
 
 # cmake
 build/
+
+# exports
+exports/

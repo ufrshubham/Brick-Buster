@@ -1,11 +1,11 @@
 #include "Game.hpp"
 #include "GameOver.hpp"
-#include "GamePlay.hpp"
+#include "Level1.hpp"
 
 #include <SFML/Window/Event.hpp>
 #include <SFML/Graphics/View.hpp>
 
-GameOver::GameOver(std::shared_ptr<Context> &context)
+GameOver::GameOver(const std::shared_ptr<Context> &context)
     : m_context(context), m_isRetryButtonSelected(true),
       m_isRetryButtonPressed(false), m_isExitButtonSelected(false),
       m_isExitButtonPressed(false)
@@ -116,7 +116,7 @@ void GameOver::Update(sf::Time deltaTime)
 
     if (m_isRetryButtonPressed)
     {
-        m_context->m_states->Add(std::make_unique<GamePlay>(m_context), true);
+        m_context->m_states->Add(std::make_unique<Level1>(m_context), true);
     }
     else if (m_isExitButtonPressed)
     {
