@@ -21,16 +21,19 @@
 #include <time.h>
 #include <iostream>
 
-Level::Level(const std::shared_ptr<Context>& context) :
-    m_entityMap(std::make_shared<std::multimap<BodyType, std::unique_ptr<Body>>>()),
-    m_context(context),
-    m_mouseJoint(nullptr),
-    m_targetPosition({0.f, 0.f}),
-    m_score(0),
-    m_isPaused(false),
-    m_tileSize(32.f),
-    m_windowSize(m_context->m_window->getDefaultView().getSize()),
-    m_contactListener(std::make_unique<ContactListener>(m_entityMap))
+Level::Level(const std::shared_ptr<Context> &context) : m_entityMap(std::make_shared<std::multimap<BodyType, std::unique_ptr<Body>>>()),
+                                                        m_context(context),
+                                                        m_mouseJoint(nullptr),
+                                                        m_targetPosition({0.f, 0.f}),
+                                                        m_score(0),
+                                                        m_isPaused(false),
+                                                        m_tileSize(32.f),
+                                                        m_windowSize(m_context->m_window->getDefaultView().getSize()),
+                                                        m_contactListener(std::make_unique<ContactListener>(m_entityMap)),
+                                                        m_levelUpTime(sf::Time::Zero),
+                                                        m_isLevelUp(false),
+                                                        m_levelCompleteText(),
+                                                        m_levelUpWaitTime(sf::seconds(2))
 {
     srand((unsigned int)time(nullptr));
     m_context->m_world->SetContactListener(m_contactListener.get());
@@ -42,17 +45,17 @@ Level::~Level()
 
 void Level::Init()
 {
-    m_entityMap->emplace(std::make_pair(BodyType::Wall, std::make_unique<Wall>(m_context, sf::Vector2f{ m_windowSize.x, m_tileSize }, sf::Vector2f{ m_windowSize.x / 2 , m_tileSize / 2 })));
-    m_entityMap->emplace(std::make_pair(BodyType::Wall, std::make_unique<Wall>(m_context, sf::Vector2f{ m_tileSize, m_windowSize.y }, sf::Vector2f{ m_tileSize / 2 , (m_windowSize.y / 2 + m_tileSize) })));
-    m_entityMap->emplace(std::make_pair(BodyType::Wall, std::make_unique<Wall>(m_context, sf::Vector2f{ m_tileSize, m_windowSize.y }, sf::Vector2f{ (m_windowSize.x - (m_tileSize / 2)) , (m_windowSize.y / 2 + m_tileSize) })));
-    m_entityMap->emplace(std::make_pair(BodyType::Wall, std::make_unique<Wall>(m_context, sf::Vector2f{ m_windowSize.x, m_tileSize }, sf::Vector2f{ m_windowSize.x / 2  , (m_windowSize.y - m_tileSize / 2) })));
+    m_entityMap->emplace(std::make_pair(BodyType::Wall, std::make_unique<Wall>(m_context, sf::Vector2f{m_windowSize.x, m_tileSize}, sf::Vector2f{m_windowSize.x / 2, m_tileSize / 2})));
+    m_entityMap->emplace(std::make_pair(BodyType::Wall, std::make_unique<Wall>(m_context, sf::Vector2f{m_tileSize, m_windowSize.y}, sf::Vector2f{m_tileSize / 2, (m_windowSize.y / 2 + m_tileSize)})));
+    m_entityMap->emplace(std::make_pair(BodyType::Wall, std::make_unique<Wall>(m_context, sf::Vector2f{m_tileSize, m_windowSize.y}, sf::Vector2f{(m_windowSize.x - (m_tileSize / 2)), (m_windowSize.y / 2 + m_tileSize)})));
+    m_entityMap->emplace(std::make_pair(BodyType::Wall, std::make_unique<Wall>(m_context, sf::Vector2f{m_windowSize.x, m_tileSize}, sf::Vector2f{m_windowSize.x / 2, (m_windowSize.y - m_tileSize / 2)})));
 
     auto position = sf::Vector2f(64.f * 2, 64.f * 2);
-    for(int i = 0; i < 3; ++i)
+    for (int i = 0; i < 3; ++i)
     {
-        for(int j = 0; j < 7; ++j)
+        for (int j = 0; j < 7; ++j)
         {
-            m_entityMap->emplace(std::make_pair(BodyType::Brick, std::make_unique<Brick>(m_context, sf::Vector2f{ (m_tileSize * 2), (m_tileSize / 2) }, position)));
+            m_entityMap->emplace(std::make_pair(BodyType::Brick, std::make_unique<Brick>(m_context, sf::Vector2f{(m_tileSize * 2), (m_tileSize / 2)}, position)));
             position.x += 64.f + 16.f;
         }
         position.x = 64.f * 2;
@@ -60,9 +63,9 @@ void Level::Init()
     }
 
     auto ballRadius = 8.f;
-    m_targetPosition = { (m_windowSize.x / 2), (m_windowSize.y - (1.5f * m_tileSize)) };
-    m_entityMap->emplace(std::make_pair(BodyType::Ball, std::make_unique<Ball>(m_context, ballRadius, sf::Vector2f{ m_targetPosition.x, m_targetPosition.y - 16.f })));
-    m_entityMap->emplace(std::make_pair(BodyType::Paddle, std::make_unique<Paddle>(m_context, sf::Vector2f{ (m_tileSize * 3), (m_tileSize / 2) }, sf::Vector2f{ m_targetPosition })));
+    m_targetPosition = {(m_windowSize.x / 2), (m_windowSize.y - (1.5f * m_tileSize))};
+    m_entityMap->emplace(std::make_pair(BodyType::Ball, std::make_unique<Ball>(m_context, ballRadius, sf::Vector2f{m_targetPosition.x, m_targetPosition.y - 16.f})));
+    m_entityMap->emplace(std::make_pair(BodyType::Paddle, std::make_unique<Paddle>(m_context, sf::Vector2f{(m_tileSize * 3), (m_tileSize / 2)}, sf::Vector2f{m_targetPosition})));
 
     auto paddleIt = m_entityMap->find(BodyType::Paddle);
     auto wallIt = m_entityMap->find(BodyType::Wall);
@@ -84,6 +87,15 @@ void Level::Init()
     m_scoreText.setOutlineColor(sf::Color::Black);
     m_scoreText.setOutlineThickness(0.f);
     m_scoreText.setCharacterSize(15);
+
+    m_levelCompleteText.setFont(m_context->m_assets->GetFont(MAIN_FONT));
+    m_levelCompleteText.setString("Level Complete!");
+    m_levelCompleteText.setFillColor(sf::Color(255, 128, 0));
+    m_levelCompleteText.setOutlineColor(sf::Color::Black);
+    m_levelCompleteText.setOutlineThickness(0.f);
+    m_levelCompleteText.setCharacterSize(50);
+    m_levelCompleteText.setOrigin(m_levelCompleteText.getLocalBounds().width / 2, m_levelCompleteText.getLocalBounds().height / 2);
+    m_levelCompleteText.setPosition(m_windowSize.x / 2, m_windowSize.y / 2);
 }
 
 void Level::ProcessInput()
@@ -95,7 +107,7 @@ void Level::ProcessInput()
             m_targetPosition -= sf::Vector2f(15.f, 0.f);
         }
     }
-    else if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right))
+    else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right))
     {
         if (m_targetPosition.x < m_windowSize.x)
         {
@@ -127,7 +139,7 @@ void Level::ProcessInput()
 
 void Level::Update(sf::Time deltaTime)
 {
-    if(!m_isPaused)
+    if (!m_isPaused)
     {
         //if (m_ball->GetLinearVelocity().Length() > 10.f)
         //{
@@ -138,23 +150,32 @@ void Level::Update(sf::Time deltaTime)
         //    m_ball->SetLinearDamping(0.f);
         //}
 
-        m_mouseJoint->SetTarget({ m_targetPosition.x / m_context->scale, m_targetPosition.y / m_context->scale });
+        m_mouseJoint->SetTarget({m_targetPosition.x / m_context->scale, m_targetPosition.y / m_context->scale});
 
         m_context->m_world->Step(deltaTime.asSeconds(), 8, 3);
 
-        for (auto& entity : *m_entityMap)
+        for (auto &entity : *m_entityMap)
         {
             entity.second->Update(deltaTime);
         }
 
         m_contactListener->DeleteCollidedBodies(m_context->m_world.get());
 
-        if(m_entityMap->find(BodyType::Brick) == m_entityMap->end())
+        if (m_entityMap->find(BodyType::Brick) == m_entityMap->end())
+        {
+            m_isLevelUp = true;
+            this->Pause();
+        }
+    }
+    if (m_isLevelUp)
+    {
+        m_levelUpTime += deltaTime;
+        if (m_levelUpTime > m_levelUpWaitTime)
         {
             this->LoadNextLevel();
 
             // Now destory all the entities.
-            for(auto& entity : *m_entityMap)
+            for (auto &entity : *m_entityMap)
             {
                 m_context->m_world->DestroyBody(entity.second.get()->GetB2Body());
             }
@@ -166,9 +187,14 @@ void Level::Draw()
 {
     m_context->m_window->clear();
 
-    for (auto& entity : *m_entityMap)
+    for (auto &entity : *m_entityMap)
     {
         m_context->m_window->draw(*entity.second);
+    }
+
+    if(m_isLevelUp)
+    {
+        m_context->m_window->draw(m_levelCompleteText);
     }
 
     m_context->m_window->draw(m_scoreText);
@@ -185,7 +211,7 @@ void Level::Start()
     m_isPaused = false;
 }
 
-b2MouseJoint* Level::CreateMouseJoint(b2Body& bodyToMove, b2Body& groundBody)
+b2MouseJoint *Level::CreateMouseJoint(b2Body &bodyToMove, b2Body &groundBody)
 {
     auto mouseJointDef = b2MouseJointDef();
     mouseJointDef.bodyA = &groundBody;
@@ -195,7 +221,6 @@ b2MouseJoint* Level::CreateMouseJoint(b2Body& bodyToMove, b2Body& groundBody)
     mouseJointDef.dampingRatio = 1.f;
     mouseJointDef.frequencyHz = 2000.f;
     mouseJointDef.maxForce = 1000.f;
-    auto moustJoint = static_cast<b2MouseJoint*>(m_context->m_world->CreateJoint(&mouseJointDef));
+    auto moustJoint = static_cast<b2MouseJoint *>(m_context->m_world->CreateJoint(&mouseJointDef));
     return moustJoint;
 }
-

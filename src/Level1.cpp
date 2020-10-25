@@ -13,6 +13,5 @@ Level1::~Level1()
 
 void Level1::LoadNextLevel() const
 {
-    // Todo: Load-up next level.
     m_context->m_states->Add(std::make_unique<Level2>(m_context));
 }

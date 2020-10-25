@@ -5,6 +5,7 @@
 
 #include <SFML/Graphics/Sprite.hpp>
 #include <SFML/Graphics/Text.hpp>
+#include <SFML/System/Time.hpp>
 
 #include <box2d/b2_body.h>
 #include <box2d/b2_mouse_joint.h>
@@ -36,6 +37,12 @@ private:
     const sf::Vector2f m_windowSize;
 
     std::unique_ptr<ContactListener> m_contactListener;
+
+    sf::Time m_levelUpTime;
+    bool m_isLevelUp;
+
+    sf::Text m_levelCompleteText;
+    const sf::Time m_levelUpWaitTime;
 
 public:
     Level(const std::shared_ptr<Context> &context);
