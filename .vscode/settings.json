@@ -55,5 +55,7 @@
         "xtr1common": "cpp",
         "xtree": "cpp",
         "xutility": "cpp"
-    }
+    },
+    "license.author": "Shubham Kamble",
+    "license.year": "2020"
 }
