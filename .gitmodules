@@ -1,0 +1,6 @@
+[submodule ".\\vendor\\box2d"]
+	path = .\\vendor\\box2d
+	url = git@github.com:ufrshubham/box2d.git
+[submodule ".\\vendor\\sfml"]
+	path = .\\vendor\\sfml
+	url = git@github.com:ufrshubham/SFML.git
