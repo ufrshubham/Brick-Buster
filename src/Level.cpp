@@ -218,9 +218,10 @@ b2MouseJoint *Level::CreateMouseJoint(b2Body &bodyToMove, b2Body &groundBody)
     mouseJointDef.bodyB = &bodyToMove;
     mouseJointDef.target = bodyToMove.GetPosition();
     mouseJointDef.collideConnected = true;
-    mouseJointDef.dampingRatio = 1.f;
-    mouseJointDef.frequencyHz = 2000.f;
     mouseJointDef.maxForce = 1000.f;
+
+    b2LinearStiffness(mouseJointDef.stiffness, mouseJointDef.damping, 2000.f, 1.f, &groundBody, &bodyToMove);
+
     auto moustJoint = static_cast<b2MouseJoint *>(m_context->m_world->CreateJoint(&mouseJointDef));
     return moustJoint;
 }

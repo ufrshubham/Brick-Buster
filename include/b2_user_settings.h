@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Body.hpp"
+class Body;
 
 #include <stdarg.h>
 #include <stdint.h>

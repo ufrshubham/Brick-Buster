@@ -62,33 +62,34 @@ Before starting :checkered_flag:, you need to have
 - Git
 - C++ compiler
 - Cmake
-- Pre-build static libraries for SFML and Box2D
+- If platform is Linux, get following libraries
+  - libfreetype6-dev
+  - libxrandr-dev
+  - libxcursor-dev
+  - libx11-dev
+  - libflac-dev
+  - libvorbis-dev
+  - libopenal-dev
+  - libudev-dev
+
 
 ## :checkered_flag: Starting ##
 
 ```bash
 # Clone this project
-$ git clone https://github.com/ufrshubham/Brick-Buster.git
+$ git clone --recursive https://github.com/ufrshubham/Brick-Buster.git
+
+# If the repository was already cloned without submodules, use
+$ git submodule update --init
 
 # Enter project directory
 $ cd Brick-Buster
 
-```
-
-- Build or download SFML and Box2D libraries for your platform.
-
-- Place release SFML libraries in vendor/sfml/lib/release and debug libraries in vendor/sfml/lib/debug.
-
-- Similarly place relase and debug libraries for Box2D under vendor/box2d/lib/release and vendor/box2d/lib/debug.
-
-``` bash
 # Generate projects files
 $ mkdir build
 $ cd build
 $ cmake ..
 ```
-
-- This will generate project files for appropriate IDE for your platform. Proceed with standard build process by opening project files.
 
 ## :memo: License ##
 
