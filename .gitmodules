@@ -1,0 +1,3 @@
+[submodule "vendor\\sfml-2.5.1"]
+	path = vendor\\sfml-2.5.1
+	url = https://github.com/SFML/SFML.git
