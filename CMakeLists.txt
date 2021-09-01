@@ -11,8 +11,8 @@ option(BOX2D_BUILD_DOCS "Build the Box2D documentation" OFF)
 option(BOX2D_USER_SETTINGS "Override Box2D settings with b2UserSettings.h" ON)
 
 add_subdirectory(src)
-add_subdirectory(vendor/box2d)
-add_subdirectory(vendor/sfml)
+add_subdirectory(vendor/box2d-2.4.1)
+add_subdirectory(vendor/sfml-2.5.1)
 
 # Copies assets and its contents to build directory.
 if(MSVC)

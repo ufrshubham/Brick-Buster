@@ -1,3 +1,6 @@
 [submodule "vendor\\sfml-2.5.1"]
 	path = vendor\\sfml-2.5.1
 	url = https://github.com/SFML/SFML.git
+[submodule "vendor\\box2d-2.4.1"]
+	path = vendor\\box2d-2.4.1
+	url = https://github.com/erincatto/box2d.git
