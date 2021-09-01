@@ -10,14 +10,17 @@ option(BOX2D_BUILD_TESTBED "Build the Box2D testbed" OFF)
 option(BOX2D_BUILD_DOCS "Build the Box2D documentation" OFF)
 option(BOX2D_USER_SETTINGS "Override Box2D settings with b2UserSettings.h" ON)
 
+file(COPY include/b2_user_settings.h DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/vendor/box2d-2.4.1/include/box2d)
+
 add_subdirectory(src)
 add_subdirectory(vendor/box2d-2.4.1)
 add_subdirectory(vendor/sfml-2.5.1)
 
+
 # Copies assets and its contents to build directory.
 if(MSVC)
-    file(COPY assets DESTINATION ${CMAKE_BINARY_DIR}/src/Debug)
-    file(COPY assets DESTINATION ${CMAKE_BINARY_DIR}/src/Release)
+file(COPY assets DESTINATION ${CMAKE_BINARY_DIR}/src/Debug)
+file(COPY assets DESTINATION ${CMAKE_BINARY_DIR}/src/Release)
 elseif(CMAKE_COMPILER_IS_GNUCC)
-    file(COPY assets DESTINATION ${CMAKE_BINARY_DIR}/src)
+file(COPY assets DESTINATION ${CMAKE_BINARY_DIR}/src)
 endif()

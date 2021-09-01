@@ -27,7 +27,6 @@ set(BRICK_BUSTER_HEADER_FILES
     ../include/PauseGame.hpp
     ../include/State.hpp
     ../include/StateMan.hpp
-    ../include/b2_user_settings.h
     ../include/ContactListener.hpp
     ../include/Body.hpp
     ../include/Ball.hpp

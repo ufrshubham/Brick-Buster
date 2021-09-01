@@ -409,3 +409,6 @@ build/
 
 # exports
 exports/
+
+# Copied b2_user_settings.h
+vendor/box2d-2.4.1/include/box2d/b2_user_settings.h
